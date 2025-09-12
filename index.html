@@ -11,7 +11,7 @@
   #progress-bar-container { height:6px; background:#333; margin:0 10px 10px 10px; border-radius:3px; }
   #progress-bar { height:100%; width:0%; background:red; border-radius:3px; transition:width 0.3s; }
   #task-list { flex:1; overflow-y:auto; padding:0 10px; }
-  .task { display:flex; align-items:center; justify-content:space-between; padding:8px; border-bottom:1px solid #444; word-wrap:break-word; }
+  .task { display:flex; align-items:center; justify-content:flex-start; padding:8px; border-bottom:1px solid #444; word-wrap:break-word; }
   .task input[type=checkbox] { margin-right:10px; }
   .task .star { cursor:pointer; color:gray; margin-left:5px; }
   .task .star.active { color:red; }
@@ -75,6 +75,7 @@ function renderTasks(){
     if(t.completed) div.style.textDecoration='line-through';
     const span = document.createElement('span');
     span.textContent = t.text;
+    span.style.textAlign='left';
     const star = document.createElement('span');
     star.className='star'+(t.priority?' active':'');
     star.textContent='★';
@@ -104,7 +105,6 @@ function addTask(){
 addBtn.addEventListener('click', addTask);
 taskInput.addEventListener('keypress',e=>{if(e.key==='Enter') addTask();});
 
-// Timer countdown
 function updateTimer(){
   const now = new Date();
   const end = new Date(); end.setHours(24,0,0,0);
