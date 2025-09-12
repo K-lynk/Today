@@ -5,239 +5,119 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Today</title>
 <style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: #000;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-  }
-  header {
-    text-align: center;
-    padding: 20px;
-    font-size: 24px;
-    font-weight: bold;
-  }
-  #timer {
-    text-align: center;
-    font-size: 16px;
-    margin-bottom: 10px;
-  }
-  #progress-container {
-    width: 100%;
-    height: 6px;
-    background: #333;
-    margin-bottom: 10px;
-  }
-  #progress-bar {
-    height: 100%;
-    width: 0%;
-    background: #fff;
-  }
-  #task-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px;
-  }
-  .task {
-    display: flex;
-    align-items: center;
-    background: #111;
-    margin-bottom: 8px;
-    padding: 10px;
-    border-radius: 6px;
-    position: relative;
-  }
-  .task input[type="checkbox"] {
-    margin-right: 10px;
-  }
-  .task .text {
-    flex: 1;
-  }
-  .task.completed .text {
-    text-decoration: line-through;
-    opacity: 0.6;
-  }
-  .star {
-    cursor: pointer;
-    margin-left: 10px;
-    color: gray;
-  }
-  .star.priority {
-    color: red;
-  }
-  #input-bar {
-    position: sticky;
-    bottom: 0;
-    display: flex;
-    border-top: 1px solid #333;
-    padding: 10px;
-    background: #000;
-    z-index: 100;
-  }
-  #new-task {
-    flex: 1;
-    padding: 8px;
-    border: none;
-    background: #111;
-    color: #fff;
-    border-radius: 4px;
-  }
-  #add-btn {
-    margin-left: 10px;
-    padding: 8px 16px;
-    background: #fff;
-    color: #000;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
+  body { margin:0; font-family:Arial,sans-serif; background:#000; color:#fff; display:flex; flex-direction:column; height:100vh; }
+  header { text-align:center; padding:15px; font-size:24px; font-weight:bold; border-bottom:1px solid #444; }
+  #timer { text-align:center; font-size:20px; margin:10px 0; }
+  #progress-bar-container { height:6px; background:#333; margin:0 10px 10px 10px; border-radius:3px; }
+  #progress-bar { height:100%; width:0%; background:red; border-radius:3px; transition:width 0.3s; }
+  #task-list { flex:1; overflow-y:auto; padding:0 10px; }
+  .task { display:flex; align-items:center; justify-content:space-between; padding:8px; border-bottom:1px solid #444; word-wrap:break-word; }
+  .task input[type=checkbox] { margin-right:10px; }
+  .task .star { cursor:pointer; color:gray; margin-left:5px; }
+  .task .star.active { color:red; }
+  #input-bar { display:flex; padding:10px; border-top:1px solid #444; background:#111; }
+  #task-input { flex:1; padding:8px; font-size:14px; }
+  #add-btn { margin-left:8px; padding:8px 14px; cursor:pointer; }
 </style>
 </head>
 <body>
 <header>Today</header>
 <div id="timer"></div>
-<div id="progress-container">
-  <div id="progress-bar"></div>
-</div>
+<div id="progress-bar-container"><div id="progress-bar"></div></div>
 <div id="task-list"></div>
 <div id="input-bar">
-  <input type="text" id="new-task" placeholder="New task...">
+  <input type="text" id="task-input" placeholder="Add a task">
   <button id="add-btn">Add</button>
 </div>
 <script>
 const taskList = document.getElementById('task-list');
-const newTaskInput = document.getElementById('new-task');
+const taskInput = document.getElementById('task-input');
 const addBtn = document.getElementById('add-btn');
-const timerEl = document.getElementById('timer');
 const progressBar = document.getElementById('progress-bar');
 
-// Timer for hours left
-function updateTimer() {
-  const now = new Date();
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  const diff = end - now;
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  timerEl.textContent = hours + 'h ' + minutes + 'm left today';
+// Check date-based reset
+const todayDate = new Date().toDateString();
+const savedDate = localStorage.getItem('todayDate');
+if(savedDate !== todayDate){
+  localStorage.removeItem('todayTasks');
+  localStorage.setItem('todayDate', todayDate);
 }
-setInterval(updateTimer, 1000);
-updateTimer();
 
-// Save/load tasks with localStorage
-function saveTasks() {
-  const tasks = [];
-  document.querySelectorAll('.task').forEach(task => {
-    tasks.push({
-      text: task.querySelector('.text').textContent,
-      completed: task.classList.contains('completed'),
-      priority: task.querySelector('.star').classList.contains('priority')
-    });
-  });
+let tasks = JSON.parse(localStorage.getItem('todayTasks')||'[]');
+
+function saveTasks(){
   localStorage.setItem('todayTasks', JSON.stringify(tasks));
 }
 
-function loadTasks() {
-  const savedTasks = JSON.parse(localStorage.getItem('todayTasks') || '[]');
-  savedTasks.forEach(t => {
-    const task = createTask(t.text);
-    if (t.completed) task.classList.add('completed');
-    if (t.priority) task.querySelector('.star').classList.add('priority');
-  });
-  updateProgress();
+function updateProgress(){
+  const completed = tasks.filter(t=>t.completed).length;
+  const percent = tasks.length ? (completed/tasks.length)*100 : 0;
+  progressBar.style.width = percent+'%';
 }
 
-// Create a task element
-function createTask(text) {
-  const task = document.createElement('div');
-  task.className = 'task';
-
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.addEventListener('change', () => {
-    task.classList.toggle('completed');
-    if (navigator.vibrate) navigator.vibrate(100);
-    updateProgress();
-    saveTasks();
-  });
-
-  const taskText = document.createElement('div');
-  taskText.className = 'text';
-  taskText.textContent = text;
-
-  const star = document.createElement('span');
-  star.className = 'star';
-  star.innerHTML = '★';
-  star.addEventListener('click', () => {
-    star.classList.toggle('priority');
-    if (star.classList.contains('priority')) {
-      taskList.prepend(task);
-    }
-    saveTasks();
-  });
-
-  task.appendChild(checkbox);
-  task.appendChild(taskText);
-  task.appendChild(star);
-
-  // Swipe to delete (mobile)
-  let startX = 0;
-  task.addEventListener('touchstart', e => startX = e.changedTouches[0].clientX);
-  task.addEventListener('touchend', e => {
-    const endX = e.changedTouches[0].clientX;
-    if (Math.abs(endX - startX) > 50) {
-      task.remove();
-      updateProgress();
+function renderTasks(){
+  taskList.innerHTML='';
+  tasks.sort((a,b)=>b.priority-a.priority);
+  tasks.forEach((t,i)=>{
+    const div = document.createElement('div');
+    div.className='task';
+    const checkbox = document.createElement('input');
+    checkbox.type='checkbox';
+    checkbox.checked = t.completed;
+    checkbox.addEventListener('click',()=>{
+      t.completed = checkbox.checked;
       saveTasks();
-    }
+      updateProgress();
+      if(t.completed) div.style.textDecoration='line-through';
+      else div.style.textDecoration='none';
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
+    if(t.completed) div.style.textDecoration='line-through';
+    const span = document.createElement('span');
+    span.textContent = t.text;
+    const star = document.createElement('span');
+    star.className='star'+(t.priority?' active':'');
+    star.textContent='★';
+    star.addEventListener('click',()=>{
+      t.priority = t.priority?0:1;
+      saveTasks();
+      renderTasks();
+    });
+    div.appendChild(checkbox);
+    div.appendChild(span);
+    div.appendChild(star);
+    div.addEventListener('click', (e)=>{ if(e.target!==checkbox && e.target!==star){ taskList.removeChild(div); tasks.splice(i,1); saveTasks(); updateProgress(); }});
+    taskList.appendChild(div);
   });
-
-  taskList.appendChild(task);
-  task.scrollIntoView({behavior: 'smooth', block: 'center'});
-  saveTasks();
   updateProgress();
-  return task;
 }
 
-// Progress bar based on completed tasks
-function updateProgress() {
-  const tasks = document.querySelectorAll('.task');
-  const completed = document.querySelectorAll('.task.completed');
-  const percent = tasks.length > 0 ? (completed.length / tasks.length) * 100 : 0;
-  progressBar.style.width = percent + '%';
+function addTask(){
+  const text = taskInput.value.trim();
+  if(!text) return;
+  tasks.push({text, completed:false, priority:0});
+  taskInput.value='';
+  saveTasks();
+  renderTasks();
 }
 
-// Add task button
-addBtn.addEventListener('click', () => {
-  const text = newTaskInput.value.trim();
-  if (text) {
-    createTask(text);
-    newTaskInput.value = '';
-  }
-});
+addBtn.addEventListener('click', addTask);
+taskInput.addEventListener('keypress',e=>{if(e.key==='Enter') addTask();});
 
-newTaskInput.addEventListener('keypress', e => {
-  if (e.key === 'Enter') addBtn.click();
-});
-
-// Reset tasks at midnight
-function resetAtMidnight() {
+// Timer countdown
+function updateTimer(){
   const now = new Date();
-  const msToMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0,0,0,0) - now;
-  setTimeout(() => {
-    taskList.innerHTML = '';
-    updateProgress();
-    localStorage.removeItem('todayTasks');
-    resetAtMidnight();
-  }, msToMidnight);
+  const end = new Date(); end.setHours(24,0,0,0);
+  const diff = end - now;
+  const hrs = Math.floor(diff/3600000);
+  const mins = Math.floor((diff%3600000)/60000);
+  const secs = Math.floor((diff%60000)/1000);
+  document.getElementById('timer').textContent=`${hrs}h ${mins}m ${secs}s left today`;
 }
-resetAtMidnight();
+setInterval(updateTimer,1000);
 
-// Load saved tasks on startup
-loadTasks();
+renderTasks();
+updateTimer();
 </script>
 </body>
 </html>
